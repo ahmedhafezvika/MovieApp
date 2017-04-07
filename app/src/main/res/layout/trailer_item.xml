@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal" android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <ImageView
+        android:layout_width="@dimen/trailerIconDimen"
+        android:layout_height="@dimen/trailerIconDimen"
+        android:src="@drawable/ic_action_play"
+        android:scaleType="fitCenter"
+        android:layout_marginLeft="@dimen/paddingMedium"
+        android:layout_gravity="center_vertical" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:layout_gravity="center_vertical"
+        android:id="@+id/trailer_name"
+        android:textColor="@color/colorText"
+        android:textSize="@dimen/textSmall"/>
+
+</LinearLayout>

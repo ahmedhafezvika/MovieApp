@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <item name="grid_cols" type="integer">2</item>
+
+    <item name="detailSum" type="integer">5</item>
+    <item name="posterWeight" type="integer">2</item>
+    <item name="dataWeight" type="integer">3</item>
+    <item name="maxLines" type="integer">1</item>
+    <item name="maxStars" type="integer">5</item>
+
+    <item name="twoPaneWeight" type="integer">1</item>
+
+</resources>
