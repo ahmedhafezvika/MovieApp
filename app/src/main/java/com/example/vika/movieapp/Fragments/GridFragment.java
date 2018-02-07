@@ -8,18 +8,17 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v7.widget.GridLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.GridView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
-
-import com.example.vika.movieapp.Adapters.GridAdapter;
+import com.example.vika.movieapp.Adapters.MoviesAdapter;
 import com.example.vika.movieapp.AsyncTasks.DbTasks;
 import com.example.vika.movieapp.AsyncTasks.ServerTasks;
 import com.example.vika.movieapp.Objects.Movie;
@@ -27,8 +26,8 @@ import com.example.vika.movieapp.R;
 import com.example.vika.movieapp.Utilities.Constants;
 import com.example.vika.movieapp.Utilities.FavouriteUtilities;
 import com.example.vika.movieapp.Utilities.GridCallback;
+import com.example.vika.movieapp.Adapters.MoviesAdapter.MoviesAdapterOnClickHandler;
 import com.google.gson.Gson;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,11 +35,11 @@ import java.util.List;
  * Created by Eng.Ahmed on 10/18/2016.
  */
 
-public class GridFragment extends Fragment implements GridCallback {
+public class GridFragment extends Fragment implements GridCallback, MoviesAdapterOnClickHandler {
 
-    private GridAdapter adapter;
     private ProgressBar progressBar;
-    private GridView gridView;
+    private RecyclerView mRecyclerView;
+    private MoviesAdapter mMoviesAdapter;
     private int pageNum = 1;
     private String sortType;
     private boolean offlineWarning = false;
@@ -63,8 +62,8 @@ public class GridFragment extends Fragment implements GridCallback {
         dbTasks = new DbTasks(this);
         serverTasks = new ServerTasks(this);
 
-        if (adapter == null) {
-            adapter = new GridAdapter(getActivity(), new ArrayList<Movie>());
+        if (mMoviesAdapter == null) {
+            mMoviesAdapter = new MoviesAdapter(getActivity(), this, new ArrayList<Movie>());
         }
 
         if (firstTime) {
@@ -75,29 +74,22 @@ public class GridFragment extends Fragment implements GridCallback {
 
         progressBar = (ProgressBar) rootView.findViewById(R.id.pbLoader);
 
-        gridView = (GridView) rootView.findViewById(R.id.posters_grid);
-        gridView.setAdapter(adapter);
+        mRecyclerView = (RecyclerView) rootView.findViewById(R.id.posters_grid);
 
-        if (adapter.isEmpty() && isOnline()) {
+        int cols = getContext().getResources().getInteger(R.integer.grid_cols);;
+        GridLayoutManager gridLayoutManager = new GridLayoutManager(getContext(), cols);
+
+        mRecyclerView.setLayoutManager(gridLayoutManager);
+        mRecyclerView.setAdapter(mMoviesAdapter);
+
+        if (mMoviesAdapter.getItemCount() == 0 && isOnline()) {
             progressBar.setVisibility(View.VISIBLE);
-            gridView.setVisibility(View.GONE);
+            mRecyclerView.setVisibility(View.GONE);
         }
         else {
             progressBar.setVisibility(View.GONE);
-            gridView.setVisibility(View.VISIBLE);
+            mRecyclerView.setVisibility(View.VISIBLE);
         }
-
-        gridView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                //selectedPosition = position;
-                Gson gson = new Gson();
-                String movieStr = gson.toJson(adapter.getItem(position));
-
-                ((Callback)getActivity()).onItemClick(movieStr);
-            }
-        });
-
         return rootView;
     }
 
@@ -109,14 +101,11 @@ public class GridFragment extends Fragment implements GridCallback {
 
     @Override
     public void handleFavourites(List<Movie> movieList) {
-        adapter.clear();
-        for(Movie movie : movieList) {
-            adapter.add(movie);
-        }
+        mMoviesAdapter.setMoviesData(movieList);
 
         progressBar.setVisibility(View.GONE);
-        gridView.setVisibility(View.VISIBLE);
-        if (adapter.isEmpty()) {
+        mRecyclerView.setVisibility(View.VISIBLE);
+        if (mMoviesAdapter.getItemCount() == 0) {
             Toast.makeText(getActivity(), Constants.getNoFavouriteMessage(), Toast.LENGTH_SHORT).show();
         }
     }
@@ -124,16 +113,21 @@ public class GridFragment extends Fragment implements GridCallback {
     @Override
     public void handleMovies(List<Movie> movies, String localType) {
         if (movies != null && sortType == localType) {
-            for(Movie movie : movies) {
-                adapter.add(movie);
-            }
-
+            mMoviesAdapter.appendMoviesData(movies);
             progressBar.setVisibility(View.GONE);
-            gridView.setVisibility(View.VISIBLE);
+            mRecyclerView.setVisibility(View.VISIBLE);
 
             pageNum ++;
             updateMovies();
         }
+    }
+
+    @Override
+    public void onClick(Movie movie) {
+        Gson gson = new Gson();
+        String movieStr = gson.toJson(movie);
+
+        ((Callback)getActivity()).onItemClick(movieStr);
     }
 
     public interface Callback {
@@ -161,13 +155,13 @@ public class GridFragment extends Fragment implements GridCallback {
            Toast.makeText(getActivity(), Constants.getOfflineMessage(), Toast.LENGTH_LONG).show();
            progressBar.setVisibility(View.GONE);
            offlineWarning = true;
-           adapter.clear();
+           mMoviesAdapter.setMoviesData(new ArrayList<Movie>());
            pageNum = 1;
            showFavourites();
        }
 
-        if (sortType == "favourite" && adapter.getCount() != FavouriteUtilities.getFavouriteSize()) {
-            adapter.clear();
+        if (sortType == "favourite" && mMoviesAdapter.getItemCount() != FavouriteUtilities.getFavouriteSize()) {
+            mMoviesAdapter.setMoviesData(new ArrayList<Movie>());
             showFavourites();
         }
     }
@@ -208,7 +202,7 @@ public class GridFragment extends Fragment implements GridCallback {
         return super.onOptionsItemSelected(item);
     }
 
-    private void handleUpdate(String type) {
+    public void handleUpdate(String type) {
         if (isOnline()) {
             sortType = type;
             prepareToUpdate();
@@ -225,10 +219,9 @@ public class GridFragment extends Fragment implements GridCallback {
     }
 
     private void prepareToUpdate() {
-        gridView.setVisibility(View.GONE);
+        mRecyclerView.setVisibility(View.GONE);
         progressBar.setVisibility(View.VISIBLE);
-        adapter = new GridAdapter(getActivity(), new ArrayList<Movie>());
-        gridView.setAdapter(adapter);
+        mMoviesAdapter.setMoviesData(new ArrayList<Movie>());
         pageNum = 1;
         ((Callback)getActivity()).onSortTypeChange();
     }
@@ -236,4 +229,5 @@ public class GridFragment extends Fragment implements GridCallback {
     private void showFavourites() {
         dbTasks.fetchFavourites();
     }
+
 }

@@ -6,10 +6,14 @@
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
-
-
-        <!-- To change the popup menu and app text color  -->
         <item name="android:textColor">@color/colorAccent</item>
+        <item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
+    </style>
+
+    <!-- launcher activity action bar styles to make it as tabBar but it is not applied -->
+    <style name="ActionBar.Solid.NoTitle" parent="@style/Widget.AppCompat.Light.ActionBar.TabBar">
+        <item name="background">@color/colorPrimary</item>
+        <item name="displayOptions">showTitle|showHome</item>
     </style>
 
     <style name="AppTheme.NoActionBar">
@@ -21,8 +25,8 @@
         <item name="android:textColor">@color/colorAccent</item>
     </style>
 
-    <style name="AppTheme.AppBarOverlay" parent="ThemeOverlay.AppCompat.Dark.ActionBar" />
-
-    <style name="AppTheme.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+    <style name="MainActivityTheme" parent="@style/AppTheme">
+        <item name="actionBarStyle">@style/ActionBar.Solid.NoTitle</item>
+    </style>
 
 </resources>

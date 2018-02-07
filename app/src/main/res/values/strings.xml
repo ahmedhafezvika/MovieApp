@@ -22,4 +22,11 @@
     <string name="title_trailers">Trailers:</string>
     <string name="title_reviews">Reviews:</string>
 
+    <string name="poster_description">movie poster</string>
+    <string name="trailer_image_description">trailer icon</string>
+    <string name="ratingbar_description">movie rating bar</string>
+    <string name="favourite_button_description">add to favourite button</string>
+    <string name="trailer_thumbnail_description">trailer thumbnail from youtube</string>
+    <string name="movie_background_description">movie background description</string>
+
 </resources>

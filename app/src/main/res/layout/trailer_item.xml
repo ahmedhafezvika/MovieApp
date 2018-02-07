@@ -1,5 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_marginLeft="@dimen/paddingSmall"
+    android:layout_marginRight="@dimen/paddingSmall">
+
+    <RelativeLayout
+        android:id="@+id/webvideo_layout2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        >
+
+
+        <ImageView
+            android:id="@+id/img_thumnail"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:adjustViewBounds="true"
+            android:contentDescription="@string/trailer_thumbnail_description"/>
+
+        <ImageView
+            android:id="@+id/iv_play_pause"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_centerInParent="true"
+            android:src="@drawable/ic_action_play" />
+    </RelativeLayout>
+
+</LinearLayout>
+
+<!--
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="horizontal" android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
@@ -9,7 +43,8 @@
         android:src="@drawable/ic_action_play"
         android:scaleType="fitCenter"
         android:layout_marginLeft="@dimen/paddingMedium"
-        android:layout_gravity="center_vertical" />
+        android:layout_gravity="center_vertical"
+        android:contentDescription="@string/trailer_image_description"/>
 
     <TextView
         android:layout_width="match_parent"
@@ -21,3 +56,4 @@
         android:textSize="@dimen/textSmall"/>
 
 </LinearLayout>
+!-->

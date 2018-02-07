@@ -12,15 +12,12 @@
         android:visibility="gone">
     </ProgressBar>
 
-    <GridView
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/posters_grid"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:numColumns="@integer/grid_cols"
         android:verticalSpacing="@dimen/activity_vertical_margin"
         android:horizontalSpacing="@dimen/activity_horizontal_margin"
-        android:stretchMode="columnWidth"
-        android:id="@+id/posters_grid"
-        android:background="@color/gridBackground">
-    </GridView>
+        android:background="@color/gridBackground"/>
 
 </RelativeLayout>

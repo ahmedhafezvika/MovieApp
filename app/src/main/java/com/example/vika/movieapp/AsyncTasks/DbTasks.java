@@ -3,12 +3,10 @@ package com.example.vika.movieapp.AsyncTasks;
 import android.app.Activity;
 import android.content.ContentValues;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.support.v4.app.Fragment;
-
 import com.example.vika.movieapp.DataBase.MovieContract;
-import com.example.vika.movieapp.DataBase.MovieDbHelper;
 import com.example.vika.movieapp.Objects.Movie;
 import com.example.vika.movieapp.Objects.Review;
 import com.example.vika.movieapp.Objects.Trailer;
@@ -16,7 +14,6 @@ import com.example.vika.movieapp.Utilities.Constants;
 import com.example.vika.movieapp.Utilities.DetailCallback;
 import com.example.vika.movieapp.Utilities.FavouriteUtilities;
 import com.example.vika.movieapp.Utilities.GridCallback;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -70,20 +67,16 @@ public class DbTasks {
     private class GetFavouritesNamesTask extends AsyncTask<Void, Void, List<String>> {
         @Override
         protected List<String> doInBackground(Void... params) {
-            MovieDbHelper dbHelper = new MovieDbHelper(mReceiver);
-            SQLiteDatabase db = dbHelper.getWritableDatabase();
 
             String[] columns = {MovieContract.MovieEntry.COLUMN_NAME};
 
-            Cursor movieCursor = db.query(
-                    MovieContract.MovieEntry.TABLE_NAME,  // Table to Query
-                    columns, // leaving "columns" null just returns all the columns.
-                    null, // cols for "where" clause
-                    null, // values for "where" clause
-                    null, // columns to group by
-                    null, // columns to filter by row groups
-                    null  // sort order
-            );
+            Cursor movieCursor = mReceiver.getContentResolver()
+                    .query(MovieContract.MovieEntry.CONTENT_URI,
+                            columns,
+                            null,
+                            null,
+                            null);
+
             movieCursor.moveToFirst();
 
             List<String> favourites = new ArrayList<>();
@@ -93,8 +86,6 @@ public class DbTasks {
                 movieCursor.moveToNext();
             }
             movieCursor.close();
-            db.close();
-            dbHelper.close();
             return favourites;
         }
 
@@ -107,18 +98,12 @@ public class DbTasks {
     private class FetchFavouritesTask extends AsyncTask<Void, Void, List<Movie>> {
         @Override
         protected List<Movie> doInBackground(Void... params) {
-            MovieDbHelper dbHelper = new MovieDbHelper(receiver.getContext());
-            SQLiteDatabase db = dbHelper.getWritableDatabase();
-
-            Cursor movieCursor = db.query(
-                    MovieContract.MovieEntry.TABLE_NAME,  // Table to Query
-                    null, // leaving "columns" null just returns all the columns.
-                    null, // cols for "where" clause
-                    null, // values for "where" clause
-                    null, // columns to group by
-                    null, // columns to filter by row groups
-                    null  // sort order
-            );
+            Cursor movieCursor = receiver.getContext().getContentResolver()
+                    .query(MovieContract.MovieEntry.CONTENT_URI,
+                    null,
+                    null,
+                    null,
+                    null);
 
             List<Movie> movieList = new ArrayList<>();
 
@@ -130,6 +115,7 @@ public class DbTasks {
                 int overviewIndex = movieCursor.getColumnIndex(MovieContract.MovieEntry.COLUMN_OVERVIEW);
                 int rateIndex = movieCursor.getColumnIndex(MovieContract.MovieEntry.COLUMN_RATE);
                 int dateIndex = movieCursor.getColumnIndex(MovieContract.MovieEntry.COLUMN_RELEASE_DATE);
+                int backgroundIndex = movieCursor.getColumnIndex(MovieContract.MovieEntry.COLUMN_BACKGROUND);
 
                 int id = movieCursor.getInt(idIndex);
                 String name = movieCursor.getString(nameIndex);
@@ -137,16 +123,14 @@ public class DbTasks {
                 String overview = movieCursor.getString(overviewIndex);
                 float rate = movieCursor.getFloat(rateIndex);
                 String poster = movieCursor.getString(posterIndex);
+                String background = movieCursor.getString(backgroundIndex);
 
-                Movie movie = new Movie(id, poster, overview, name, date, rate);
+                Movie movie = new Movie(id, poster, overview, name, date, rate, background);
                 movieList.add(movie);
                 movieCursor.moveToNext();
             }
 
             movieCursor.close();
-            db.close();
-            dbHelper.close();
-
             return movieList;
         }
 
@@ -161,8 +145,6 @@ public class DbTasks {
     private class SaveInDbTask extends AsyncTask<Movie, Void, Void> {
         @Override
         protected Void doInBackground(Movie... params) {
-            MovieDbHelper dbHelper = new MovieDbHelper(receiver.getContext());
-            SQLiteDatabase db = dbHelper.getWritableDatabase();
 
             Movie movie = params[0];
 
@@ -173,35 +155,40 @@ public class DbTasks {
             movieValues.put(MovieContract.MovieEntry.COLUMN_POSTER_PATH, movie.getPosterPath());
             movieValues.put(MovieContract.MovieEntry.COLUMN_RATE, movie.getVote_average());
             movieValues.put(MovieContract.MovieEntry.COLUMN_RELEASE_DATE, movie.getRelease_date());
-
-            db.insert(MovieContract.MovieEntry.TABLE_NAME, null, movieValues);
+            movieValues.put(MovieContract.MovieEntry.COLUMN_BACKGROUND, movie.getBackground());
+            // Insert the content values via a ContentResolver
+            Uri uri = receiver.getContext().getContentResolver().insert(MovieContract.MovieEntry.CONTENT_URI, movieValues);
 
             // add trailers
-            for (int i = 0; i < ((DetailCallback)receiver).getTrailerCount(); i++) {
+            int trailersCount = ((DetailCallback)receiver).getTrailerCount();
+            ContentValues[] trailerValues = new ContentValues[trailersCount];
+            for (int i = 0; i < trailersCount; i++) {
                 Trailer trailer = ((DetailCallback)receiver).getTrailerByIndex(i);
 
-                ContentValues trailerValues = new ContentValues();
-                trailerValues.put(MovieContract.TrailerEntry.COLUMN_MOVIE_KEY, movie.getId());
-                trailerValues.put(MovieContract.TrailerEntry.COLUMN_NAME, trailer.getName());
-                trailerValues.put(MovieContract.TrailerEntry.COLUMN_PATH, trailer.getPath());
-                trailerValues.put(MovieContract.TrailerEntry.COLUMN_SITE, trailer.getType());
+                ContentValues value = new ContentValues();
+                value.put(MovieContract.TrailerEntry.COLUMN_MOVIE_KEY, movie.getId());
+                value.put(MovieContract.TrailerEntry.COLUMN_NAME, trailer.getName());
+                value.put(MovieContract.TrailerEntry.COLUMN_PATH, trailer.getPath());
+                value.put(MovieContract.TrailerEntry.COLUMN_SITE, trailer.getType());
 
-                db.insert(MovieContract.TrailerEntry.TABLE_NAME, null, trailerValues);
+                trailerValues[i] = value;
             }
+            receiver.getContext().getContentResolver().bulkInsert(MovieContract.TrailerEntry.CONTENT_URI, trailerValues);
 
             // add reviews
-            for (int i = 0; i < ((DetailCallback)receiver).getReviewCount(); i++) {
+            int reviewsCount = ((DetailCallback)receiver).getReviewCount();
+            ContentValues[] reviewsValues = new ContentValues[reviewsCount];
+            for (int i = 0; i < reviewsCount; i++) {
                 Review review = ((DetailCallback)receiver).getReviewByIndex(i);
 
-                ContentValues reviewValues = new ContentValues();
-                reviewValues.put(MovieContract.ReviewEntry.COLUMN_MOVIE_KEY, movie.getId());
-                reviewValues.put(MovieContract.ReviewEntry.COLUMN_AUTHOR, review.getAuthor());
-                reviewValues.put(MovieContract.ReviewEntry.COLUMN_CONTENT, review.getContent());
+                ContentValues value = new ContentValues();
+                value.put(MovieContract.ReviewEntry.COLUMN_MOVIE_KEY, movie.getId());
+                value.put(MovieContract.ReviewEntry.COLUMN_AUTHOR, review.getAuthor());
+                value.put(MovieContract.ReviewEntry.COLUMN_CONTENT, review.getContent());
 
-                db.insert(MovieContract.ReviewEntry.TABLE_NAME, null, reviewValues);
+                reviewsValues[i] = value;
             }
-            db.close();
-            dbHelper.close();
+            receiver.getContext().getContentResolver().bulkInsert(MovieContract.ReviewEntry.CONTENT_URI, reviewsValues);
 
             FavouriteUtilities.addToFavourite(movie.getTitle());
             return null;
@@ -216,18 +203,16 @@ public class DbTasks {
     private class RemoveFromDbTask extends AsyncTask<Movie, Void, Void> {
         @Override
         protected Void doInBackground(Movie... params) {
-            MovieDbHelper dbHelper = new MovieDbHelper(receiver.getContext());
-            SQLiteDatabase db = dbHelper.getWritableDatabase();
-
             Movie movie = params[0];
 
-            db.delete(MovieContract.MovieEntry.TABLE_NAME, MovieContract.MovieEntry.COLUMN_ID + "=" + movie.getId(), null);
-            db.delete(MovieContract.TrailerEntry.TABLE_NAME, MovieContract.TrailerEntry.COLUMN_MOVIE_KEY + "=" + movie.getId(), null);
-            db.delete(MovieContract.ReviewEntry.TABLE_NAME, MovieContract.ReviewEntry.COLUMN_MOVIE_KEY + "=" + movie.getId(), null);
-
-            db.close();
-            dbHelper.close();
-
+            Uri uri = MovieContract.MovieEntry.CONTENT_URI;
+            String id = String.valueOf(movie.getId());
+            uri = uri.buildUpon().appendPath(id).build();
+            receiver.getContext().getContentResolver().delete(uri, null, null);
+            receiver.getContext().getContentResolver()
+                    .delete(MovieContract.TrailerEntry.CONTENT_URI, MovieContract.TrailerEntry.COLUMN_MOVIE_KEY + "=?", new String[]{id});
+            receiver.getContext().getContentResolver()
+                    .delete(MovieContract.ReviewEntry.CONTENT_URI, MovieContract.ReviewEntry.COLUMN_MOVIE_KEY + "=?", new String[]{id});
             FavouriteUtilities.removeFromFavourite(movie.getTitle());
             return null;
         }
@@ -241,20 +226,14 @@ public class DbTasks {
     private class FetchTrailersDbTask extends AsyncTask<String, Void, List<Trailer>> {
         @Override
         protected List<Trailer> doInBackground(String... params) {
-            MovieDbHelper dbHelper = new MovieDbHelper(receiver.getContext());
-            SQLiteDatabase db = dbHelper.getWritableDatabase();
-
             List<Trailer> trailerList = new ArrayList<>();
 
-            Cursor trailerCursor = db.query(
-                    MovieContract.TrailerEntry.TABLE_NAME,  // Table to Query
-                    null, // leaving "columns" null just returns all the columns.
-                    MovieContract.TrailerEntry.COLUMN_MOVIE_KEY + "=?", // cols for "where" clause
-                    new String[]{String.valueOf(params[0])}, // values for "where" clause
-                    null, // columns to group by
-                    null, // columns to filter by row groups
-                    null  // sort order
-            );
+            Cursor trailerCursor = receiver.getContext().getContentResolver()
+                    .query(MovieContract.TrailerEntry.CONTENT_URI,
+                            null,
+                            MovieContract.TrailerEntry.COLUMN_MOVIE_KEY + "=?",
+                            new String[]{String.valueOf(params[0])},
+                            null);
             trailerCursor.moveToFirst();
             while (!trailerCursor.isAfterLast()) {
                 int siteIndex = trailerCursor.getColumnIndex(MovieContract.TrailerEntry.COLUMN_SITE);
@@ -269,8 +248,6 @@ public class DbTasks {
                 trailerCursor.moveToNext();
             }
             trailerCursor.close();
-            db.close();
-            dbHelper.close();
 
             return trailerList;
         }
@@ -286,20 +263,14 @@ public class DbTasks {
     private class FetchReviewsDbTask extends AsyncTask<String, Void, List<Review>> {
         @Override
         protected List<Review> doInBackground(String... params) {
-            MovieDbHelper dbHelper = new MovieDbHelper(receiver.getContext());
-            SQLiteDatabase db = dbHelper.getWritableDatabase();
-
             List<Review> reviewList = new ArrayList<>();
 
-            Cursor reviewCursor = db.query(
-                    MovieContract.ReviewEntry.TABLE_NAME,  // Table to Query
-                    null, // leaving "columns" null just returns all the columns.
-                    MovieContract.ReviewEntry.COLUMN_MOVIE_KEY + "=?", // cols for "where" clause
-                    new String[]{String.valueOf(params[0])}, // values for "where" clause
-                    null, // columns to group by
-                    null, // columns to filter by row groups
-                    null  // sort order
-            );
+            Cursor reviewCursor = receiver.getContext().getContentResolver()
+                    .query(MovieContract.ReviewEntry.CONTENT_URI,
+                            null,
+                            MovieContract.ReviewEntry.COLUMN_MOVIE_KEY + "=?",
+                            new String[]{String.valueOf(params[0])},
+                            null);
             reviewCursor.moveToFirst();
             while (!reviewCursor.isAfterLast()) {
                 int authorIndex = reviewCursor.getColumnIndex(MovieContract.ReviewEntry.COLUMN_AUTHOR);
@@ -311,9 +282,6 @@ public class DbTasks {
                 reviewList.add(review);
                 reviewCursor.moveToNext();
             }
-            db.close();
-            dbHelper.close();
-
             return reviewList;
         }
 

@@ -8,18 +8,21 @@ public class Movie {
 
     private int id;
     private String posterPath;
+    private String background;
     private String overview;
     private String title;
     private String release_date;
     private float vote_average;
 
-    public Movie(int id, String posterPath, String overview, String title, String release_date, float vote_average) {
+    public Movie(int id, String posterPath, String overview, String title,
+                 String release_date, float vote_average, String background) {
         this.id = id;
         this.posterPath = posterPath;
         this.overview = overview;
         this.title = title;
         this.release_date = release_date;
         this.vote_average = vote_average;
+        this.background = background;
     }
 
     public int getId() {
@@ -44,5 +47,9 @@ public class Movie {
 
     public float getVote_average() {
         return vote_average;
+    }
+
+    public String getBackground() {
+        return background;
     }
 }

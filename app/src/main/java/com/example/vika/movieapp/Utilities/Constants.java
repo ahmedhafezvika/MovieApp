@@ -10,7 +10,7 @@ public class Constants {
     private static final String BASE_MOVIE_URL = "https://api.themoviedb.org/3/movie/";
     private static final String DB_ADDING_MESSAGE = "Movie added to favourites";
     private static final String DB_REMOVING_MESSAGE = "Movie removed from favourites";
-    private static final String API_KEY = "your_api_key";
+    private static final String API_KEY = "d31e8cfb701c0bdcafb53d7cca7596a0";
     private static final String NO_FAVOURITE_MESSAGE = "There is no favourite movies";
     private static final String OFFLINE_MESSAGE = "you are offline please check your network connection " +
             "or you can only show your favourites";

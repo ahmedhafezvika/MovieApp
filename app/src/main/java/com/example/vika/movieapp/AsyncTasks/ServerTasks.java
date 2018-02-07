@@ -67,6 +67,7 @@ public class ServerTasks {
             final String OWM_RELEASE_DATE = "release_date";
             final String OWM_TITLE = "title";
             final String OWM_VOTE_AVERAGE = "vote_average";
+            final String OWM_BACKGROUND_PATH = "backdrop_path";
 
             JSONObject moviesJson = new JSONObject(jsonStr);
             JSONArray movieArray = moviesJson.getJSONArray(OWM_RESULTS);
@@ -78,6 +79,7 @@ public class ServerTasks {
                 String title;
                 int id;
                 float vote_average;
+                String background;
 
                 JSONObject movieObject = movieArray.getJSONObject(i);
 
@@ -87,8 +89,9 @@ public class ServerTasks {
                 title = movieObject.getString(OWM_TITLE);
                 id = movieObject.getInt(OWM_ID);
                 vote_average = (float) movieObject.getDouble(OWM_VOTE_AVERAGE);
+                background = movieObject.getString(OWM_BACKGROUND_PATH);
 
-                Movie movie = new Movie(id, poster_path, overview, title, release_date, vote_average);
+                Movie movie = new Movie(id, poster_path, overview, title, release_date, vote_average, background);
 
                 movies.add(movie);
             }

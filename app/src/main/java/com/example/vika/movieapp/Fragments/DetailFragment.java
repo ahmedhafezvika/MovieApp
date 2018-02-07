@@ -2,24 +2,27 @@ package com.example.vika.movieapp.Fragments;
 
 import android.content.Context;
 import android.content.Intent;
+import android.databinding.DataBindingUtil;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.v4.app.Fragment;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
-import android.widget.RatingBar;
 import android.widget.ScrollView;
-import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.vika.movieapp.Activities.MainActivity;
 import com.example.vika.movieapp.Adapters.ReviewsAdapter;
 import com.example.vika.movieapp.Adapters.TrailersAdapter;
 import com.example.vika.movieapp.AsyncTasks.DbTasks;
@@ -32,9 +35,11 @@ import com.example.vika.movieapp.Utilities.Constants;
 import com.example.vika.movieapp.Utilities.DetailCallback;
 import com.example.vika.movieapp.Utilities.ExpandableHeightListView;
 import com.example.vika.movieapp.Utilities.FavouriteUtilities;
+import com.example.vika.movieapp.databinding.DetailLayoutBinding;
+import com.example.vika.movieapp.Adapters.TrailersAdapter.TrailersAdapterOnClickHandler;
+import com.example.vika.movieapp.databinding.FragmentDetailBinding;
 import com.google.gson.Gson;
 import com.squareup.picasso.Picasso;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,20 +47,23 @@ import java.util.List;
  * Created by Eng.Ahmed on 10/19/2016.
  */
 
-public class DetailFragment extends Fragment implements DetailCallback {
+public class DetailFragment extends Fragment implements DetailCallback, TrailersAdapterOnClickHandler {
 
+    private RecyclerView trailersRecyclerView;
     private TrailersAdapter trailersAdapter;
     private ReviewsAdapter reviewsAdapter;
     private String movieID;
-    private ExpandableHeightListView trailers;
     private ExpandableHeightListView reviews;
     private ProgressBar progressBar;
-    private ScrollView scrollView;
+    private android.support.v4.widget.NestedScrollView scrollView;
     private boolean favourite = false;
     private DbTasks dbTasks;
     private ServerTasks serverTasks;
     private boolean gotData = false;
     private Context context;
+
+    DetailLayoutBinding mBinding;
+    FragmentDetailBinding fBinding;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -66,7 +74,12 @@ public class DetailFragment extends Fragment implements DetailCallback {
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        View rootView  = inflater.inflate(R.layout.fragment_detail, container, false);
+
+        Log.d("hhhhhhhhhhh", "detail fragment on create view");
+
+        fBinding = DataBindingUtil.inflate(inflater, R.layout.fragment_detail, container, false);
+        mBinding = fBinding.detailView;
+        View rootView = fBinding.getRoot();
 
         context = getActivity();
         dbTasks = new DbTasks(this);
@@ -76,23 +89,54 @@ public class DetailFragment extends Fragment implements DetailCallback {
         String movieStr = bundle.getString("movieDetail");
         final Movie movie = gson.fromJson(movieStr, Movie.class);
 
-        scrollView = (ScrollView) rootView.findViewById(R.id.scroll);
-        progressBar = (ProgressBar) rootView.findViewById(R.id.pbLoader);
-        RatingBar ratingBar = (RatingBar) rootView.findViewById(R.id.ratingBar);
-        TextView movieName = (TextView) rootView.findViewById(R.id.movie_name);
-        ImageView moviePoster = (ImageView) rootView.findViewById(R.id.movie_poster);
-        TextView movieDate = (TextView) rootView.findViewById(R.id.movie_date);
-        TextView movieRate = (TextView) rootView.findViewById(R.id.movie_rate);
-        TextView movieOverview = (TextView) rootView.findViewById(R.id.movie_overview);
-        ImageButton favouriteButton = (ImageButton) rootView.findViewById(R.id.favourite);
+        displayDataInfo(movie);
+        movieID = String.valueOf(movie.getId());
 
-        boolean favourite = FavouriteUtilities.foundInFavourites(movie.getTitle());
-
-        if (favourite) {
-            favouriteButton.setSelected(true);
+        if (trailersAdapter == null) {
+            Log.d("hhhhhhhhhhh", "trailer adapter is null");
+            trailersAdapter = new TrailersAdapter(getActivity(), this, new ArrayList<Trailer>());
+        }
+        if (reviewsAdapter == null) {
+            Log.d("hhhhhhhhhhh", "reviews adapter is null");
+            reviewsAdapter = new ReviewsAdapter(getActivity(), new ArrayList<Review>());
         }
 
-        favouriteButton.setOnClickListener(new View.OnClickListener() {
+        reviews.setFocusable(false);
+        trailersRecyclerView.setAdapter(trailersAdapter);
+        reviews.setAdapter(reviewsAdapter);
+
+        if (!gotData && isOnline()) {
+            progressBar.setVisibility(View.VISIBLE);
+            scrollView.setVisibility(View.INVISIBLE);
+        }
+        else {
+            progressBar.setVisibility(View.GONE);
+            scrollView.setVisibility(View.VISIBLE);
+        }
+        return rootView;
+    }
+
+    private void displayDataInfo (final Movie movie) {
+
+        if (context instanceof MainActivity) {
+            fBinding.collapsingToolbar.setTitle(movie.getTitle());
+            Picasso.with(getContext()).load("http://image.tmdb.org/t/p/w185" + movie.getBackground()).into(fBinding.image);
+        }
+        mBinding.movieDate.setText(movie.getRelease_date().substring(5, 7) + "/" + movie.getRelease_date().substring(0, 4));
+        mBinding.movieRate.setText(String.valueOf(movie.getVote_average()) + "/10");
+        mBinding.ratingBar.setIsIndicator(true);
+        mBinding.ratingBar.setRating(movie.getVote_average() / 2);
+        mBinding.movieOverview.setText(movie.getOverview());
+        Picasso.with(getContext()).load("http://image.tmdb.org/t/p/w185" + movie.getPosterPath())
+                .placeholder(R.drawable.ic_action_default_poster)
+                .error(R.drawable.ic_action_default_poster)
+                .into(mBinding.moviePoster);
+
+        boolean favourite = FavouriteUtilities.foundInFavourites(movie.getTitle());
+        if (favourite) {
+            mBinding.favourite.setSelected(true);
+        }
+        mBinding.favourite.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (v.isSelected()) {
@@ -105,60 +149,13 @@ public class DetailFragment extends Fragment implements DetailCallback {
                 }
             }
         });
-
-        trailers = (ExpandableHeightListView) rootView.findViewById(R.id.movie_trailers);
-        reviews = (ExpandableHeightListView) rootView.findViewById(R.id.movie_reviews);
-
-        trailers.setFocusable(false);
-        reviews.setFocusable(false);
-
-        if (trailersAdapter == null) {
-            trailersAdapter = new TrailersAdapter(getActivity(), new ArrayList<Trailer>());
-        }
-        if (reviewsAdapter == null) {
-            reviewsAdapter = new ReviewsAdapter(getActivity(), new ArrayList<Review>());
-        }
-
-        trailers.setAdapter(trailersAdapter);
-        reviews.setAdapter(reviewsAdapter);
-
-        if (!gotData && isOnline()) {
-            progressBar.setVisibility(View.VISIBLE);
-            scrollView.setVisibility(View.GONE);
-        }
-        else {
-            progressBar.setVisibility(View.GONE);
-            scrollView.setVisibility(View.VISIBLE);
-        }
-
-        trailers.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                if (isOnline()) {
-                    Intent intent = new Intent(Intent.ACTION_VIEW);
-                    Uri trailerUri = Uri.parse("https://www.youtube.com/watch?").buildUpon()
-                            .appendQueryParameter("v", ( (Trailer) parent.getItemAtPosition(position)).getPath())
-                            .build();
-                    intent.setData(trailerUri);
-                    startActivity(intent);
-                } else {
-                    Toast.makeText(getActivity(), "you are offline please check your network connection", Toast.LENGTH_LONG).show();
-                }
-            }
-        });
-
-        if (bundle != null) {
-            movieName.setText(movie.getTitle());
-            movieDate.setText(movie.getRelease_date().substring(5, 7) + "/" + movie.getRelease_date().substring(0, 4));
-            movieRate.setText(String.valueOf(movie.getVote_average()) + "/10");
-            ratingBar.setIsIndicator(true);
-            ratingBar.setRating(movie.getVote_average() / 2);
-            movieOverview.setText(movie.getOverview());
-            Picasso.with(getContext()).load("http://image.tmdb.org/t/p/w185" + movie.getPosterPath()).into(moviePoster);
-
-            movieID = String.valueOf(movie.getId());
-        }
-        return rootView;
+        trailersRecyclerView = mBinding.movieTrailers;
+        LinearLayoutManager layoutManager
+                = new LinearLayoutManager(getContext(), LinearLayoutManager.HORIZONTAL, false);
+        trailersRecyclerView.setLayoutManager(layoutManager);
+        reviews = mBinding.movieReviews;
+        scrollView = mBinding.scroll;
+        progressBar = mBinding.pbLoader;
     }
 
     @Override
@@ -184,7 +181,7 @@ public class DetailFragment extends Fragment implements DetailCallback {
     }
 
     private void updateTrailers() {
-        if (trailersAdapter.isEmpty()) {
+        if (trailersAdapter.getItemCount() == 0) {
             if (favourite) {
                 dbTasks.fetchTrailers(movieID);
             } else if (isOnline()) {
@@ -192,8 +189,6 @@ public class DetailFragment extends Fragment implements DetailCallback {
             } else {
                 Toast.makeText(getActivity(), Constants.getOfflineDetailMessage(), Toast.LENGTH_LONG).show();
             }
-        } else {
-            trailers.setExpanded(true);
         }
     }
 
@@ -213,7 +208,7 @@ public class DetailFragment extends Fragment implements DetailCallback {
 
     @Override
     public int getTrailerCount() {
-        return trailersAdapter.getCount();
+        return trailersAdapter.getItemCount();
     }
 
     @Override
@@ -223,7 +218,7 @@ public class DetailFragment extends Fragment implements DetailCallback {
 
     @Override
     public Trailer getTrailerByIndex(int index) {
-        return trailersAdapter.getItem(index);
+        return trailersAdapter.getTrailerByIndex(index);
     }
 
     @Override
@@ -238,11 +233,7 @@ public class DetailFragment extends Fragment implements DetailCallback {
 
     @Override
     public void handleTrailers(List<Trailer> trailersList) {
-        trailersAdapter.clear();
-        for(Trailer trailer : trailersList) {
-            trailersAdapter.add(trailer);
-        }
-        trailers.setExpanded(true);
+        trailersAdapter.setTrailersData(trailersList);
         scrollView.setVisibility(View.VISIBLE);
         progressBar.setVisibility(View.GONE);
     }
@@ -256,5 +247,19 @@ public class DetailFragment extends Fragment implements DetailCallback {
         reviews.setExpanded(true);
         scrollView.setVisibility(View.VISIBLE);
         progressBar.setVisibility(View.GONE);
+    }
+
+    @Override
+    public void onClick(Trailer trailer) {
+        if (isOnline()) {
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            Uri trailerUri = Uri.parse("https://www.youtube.com/watch?").buildUpon()
+                    .appendQueryParameter("v", trailer.getPath())
+                    .build();
+            intent.setData(trailerUri);
+            startActivity(intent);
+        } else {
+            Toast.makeText(getActivity(), "you are offline please check your network connection", Toast.LENGTH_LONG).show();
+        }
     }
 }
